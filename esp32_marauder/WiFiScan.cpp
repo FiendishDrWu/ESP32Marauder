@@ -9044,7 +9044,7 @@ bool WiFiScan::filterActive() {
         }
 
         // Also change channel while we're at it
-        this->channelHop(true);
+        //this->channelHop(true);
         display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK);
         display_obj.tftDrawChannelScaleButtons(set_channel);
         display_obj.tftDrawExitScaleButtons();
