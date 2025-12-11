@@ -164,7 +164,7 @@ void setup()
     delay(100);
   #endif
 
-  #ifdef defined(MARAUDER_M5STICKC) && !defined(MARAUDER_M5STICKCP2)
+  #if defined(MARAUDER_M5STICKC) && !defined(MARAUDER_M5STICKCP2)
     axp192_obj.begin();
   #endif
 
