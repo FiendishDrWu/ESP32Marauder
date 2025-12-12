@@ -4021,6 +4021,12 @@ void WiFiScan::RunEapolScan(uint8_t scan_mode, uint16_t color)
   startPcap("eapol");
   
   #ifdef HAS_SCREEN
+    // Clear display buffer
+    display_obj.display_buffer->clear();
+    #ifdef SCREEN_BUFFER
+      display_obj.screen_buffer->clear();
+    #endif
+    
     display_obj.TOP_FIXED_AREA_2 = 48;
     display_obj.tteBar = true;
     display_obj.print_delay_1 = 15;
@@ -4029,8 +4035,16 @@ void WiFiScan::RunEapolScan(uint8_t scan_mode, uint16_t color)
     display_obj.tft.setTextWrap(false);
     display_obj.tft.setTextColor(TFT_WHITE, color);
     #ifdef HAS_FULL_SCREEN
+      // Clear the entire screen first
+      display_obj.tft.fillScreen(TFT_BLACK);
+      // Draw header banner
       display_obj.tft.fillRect(0,16,TFT_WIDTH,16, color);
-      display_obj.tft.drawCentreString(text_table4[38],TFT_WIDTH / 2,16,2);
+      if (scan_mode == WIFI_SCAN_EAPOL)
+        display_obj.tft.drawCentreString("EAPOL Sniffer",TFT_WIDTH / 2,16,2);
+      else if (scan_mode == WIFI_SCAN_ACTIVE_EAPOL)
+        display_obj.tft.drawCentreString("Active EAPOL",TFT_WIDTH / 2,16,2);
+      else if (scan_mode == WIFI_SCAN_ACTIVE_LIST_EAPOL)
+        display_obj.tft.drawCentreString("Active List EAPOL",TFT_WIDTH / 2,16,2);
     #endif
     display_obj.tft.setTextColor(TFT_GREEN, TFT_BLACK);
     display_obj.setupScrollArea(display_obj.TOP_FIXED_AREA_2, BOT_FIXED_AREA);
