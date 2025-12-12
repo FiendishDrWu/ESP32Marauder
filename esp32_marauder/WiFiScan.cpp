@@ -4018,55 +4018,22 @@ void WiFiScan::RunEapolScan(uint8_t scan_mode, uint16_t color)
   
   num_eapol = 0;
 
-  #ifdef HAS_ILI9341
-    #ifdef HAS_SCREEN
-      display_obj.init();
-      display_obj.tft.setRotation(1);
-      display_obj.tft.fillScreen(TFT_BLACK);
-    #endif
+  startPcap("eapol");
   
-    startPcap("eapol");
-  
-    #ifdef HAS_SCREEN
-      #ifndef HAS_CYD_TOUCH
-        display_obj.setCalData(true);
-      #else
-        //display_obj.touchscreen.setRotation(1);
-      #endif
-    
-      display_obj.tft.setFreeFont(NULL);
-      display_obj.tft.setTextSize(1);
-      display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK); // Buttons
-      display_obj.tft.fillRect(12, 0, 90, 32, TFT_BLACK); // color key
-    
-      delay(10);
-    
-      display_obj.tftDrawGraphObjects(x_scale); //draw graph objects
-      display_obj.tftDrawEapolColorKey(this->filterActive());
-      display_obj.tftDrawChannelScaleButtons(set_channel);
-      display_obj.tftDrawExitScaleButtons();
+  #ifdef HAS_SCREEN
+    display_obj.TOP_FIXED_AREA_2 = 48;
+    display_obj.tteBar = true;
+    display_obj.print_delay_1 = 15;
+    display_obj.print_delay_2 = 10;
+    display_obj.initScrollValues(true);
+    display_obj.tft.setTextWrap(false);
+    display_obj.tft.setTextColor(TFT_WHITE, color);
+    #ifdef HAS_FULL_SCREEN
+      display_obj.tft.fillRect(0,16,TFT_WIDTH,16, color);
+      display_obj.tft.drawCentreString(text_table4[38],TFT_WIDTH / 2,16,2);
     #endif
-  #else
-    startPcap("eapol");
-    
-    #ifdef HAS_SCREEN
-      display_obj.TOP_FIXED_AREA_2 = 48;
-      display_obj.tteBar = true;
-      display_obj.print_delay_1 = 15;
-      display_obj.print_delay_2 = 10;
-      display_obj.initScrollValues(true);
-      display_obj.tft.setTextWrap(false);
-      display_obj.tft.setTextColor(TFT_WHITE, color);
-      #ifdef HAS_FULL_SCREEN
-        display_obj.tft.fillRect(0,16,TFT_WIDTH,16, color);
-        display_obj.tft.drawCentreString(text_table4[38],TFT_WIDTH / 2,16,2);
-      #endif
-      #ifdef HAS_ILI9341
-        display_obj.touchToExit();
-      #endif
-      display_obj.tft.setTextColor(TFT_GREEN, TFT_BLACK);
-      display_obj.setupScrollArea(display_obj.TOP_FIXED_AREA_2, BOT_FIXED_AREA);
-    #endif
+    display_obj.tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    display_obj.setupScrollArea(display_obj.TOP_FIXED_AREA_2, BOT_FIXED_AREA);
   #endif
 
   esp_wifi_init(&cfg);
@@ -8891,11 +8858,7 @@ void WiFiScan::eapolSnifferCallback(void* buf, wifi_promiscuous_pkt_type_t type)
 
       Serial.print(" ");
 
-      #ifdef SCREEN_BUFFER
-        #ifndef HAS_ILI9341
-          display_obj.display_buffer->add(display_string);
-        #endif
-      #endif
+      display_obj.display_buffer->add(display_string);
     #else
       Serial.println(addr);    
     #endif
@@ -8985,6 +8948,26 @@ void WiFiScan::activeEapolSnifferCallback(void* buf, wifi_promiscuous_pkt_type_t
     num_eapol++;
     Serial.println(F("Received EAPOL:"));
 
+    char addr[] = "00:00:00:00:00:00";
+    getMAC(addr, snifferPacket->payload, 10);
+    
+    String display_string = "";
+    display_string.concat(addr);
+
+    int temp_len = display_string.length();
+
+   #ifdef HAS_SCREEN
+      for (int i = 0; i < 40 - temp_len; i++)
+      {
+        display_string.concat(" ");
+      }
+
+      Serial.print(" ");
+
+      display_obj.display_buffer->add(display_string);
+    #else
+      Serial.println(addr);    
+    #endif
   }
 
   buffer_obj.append(snifferPacket, len);
@@ -9033,105 +9016,56 @@ bool WiFiScan::filterActive() {
 
 #ifdef HAS_SCREEN
   void WiFiScan::eapolMonitorMain(uint32_t currentTime)
-  {  
-    for (x_pos = (11 + x_scale); x_pos <= 320; x_pos = x_pos)
-    {
-      currentTime = millis();
-      do_break = false;
-  
-      y_pos_x = 0;
-      y_pos_y = 0;
-      y_pos_z = 0;
-
-          int8_t b = this->checkAnalyzerButtons(currentTime);
-  
-          // Channel - button pressed
-          if (b == 4) {
-            if (set_channel > 1) {
-              set_channel--;
-              delay(70);
-              display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK);
-              display_obj.tftDrawChannelScaleButtons(set_channel);
-              display_obj.tftDrawExitScaleButtons();
-              changeChannel();
-              //break;
-            }
+  {
+    #ifdef HAS_ILI9341
+      // Touchscreen device - use three-zone touch handler
+      boolean pressed = false;
+      uint16_t t_x = 0, t_y = 0;
+      
+      pressed = display_obj.updateTouch(&t_x, &t_y);
+      
+      if (pressed) {
+        // Get screen height (YMAX is the bottom of screen area)
+        uint16_t screen_height = YMAX;
+        
+        // Calculate thirds (accounting for header area at top)
+        // TOP_FIXED_AREA_2 is typically 48 pixels for the header
+        uint16_t header_height = display_obj.TOP_FIXED_AREA_2;
+        uint16_t usable_height = screen_height - header_height;
+        uint16_t top_third_end = header_height + (usable_height / 3);
+        uint16_t bottom_third_start = header_height + ((usable_height * 2) / 3);
+        
+        // Check which zone was touched
+        if (t_y < top_third_end) {
+          // Upper third - increase channel
+          if (set_channel < MAX_CHANNEL) {
+            set_channel++;
+            this->changeChannel(set_channel);
+            delay(100); // Small delay to prevent rapid channel changes
           }
-  
-          // Channel + button pressed
-          else if (b == 5) {
-            if (set_channel < MAX_CHANNEL) {
-              set_channel++;
-              delay(70);
-              display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK);
-              display_obj.tftDrawChannelScaleButtons(set_channel);
-              display_obj.tftDrawExitScaleButtons();
-              changeChannel();
-              //break;
-            }
-          }
-          else if (b == 6) {
-            this->StartScan(WIFI_SCAN_OFF);
-            //display_obj.init();
-            this->orient_display = true;
-            return;
-          }
-      //  }
-      //}
-  
-      if (currentTime - initTime >= (GRAPH_REFRESH * 5)) {
-        x_pos += x_scale;
-        initTime = millis();
-        y_pos_x = ((-num_eapol * (y_scale * 3)) + (HEIGHT_1 - 2)); // GREEN
-        if (y_pos_x >= HEIGHT_1) {
-          Serial.println(F("Max EAPOL number reached. Adjusting..."));
-          num_eapol = 0;
         }
-
-        // Also change channel while we're at it
-        //this->channelHop(true);
-        //display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK);
-        //display_obj.tftDrawChannelScaleButtons(set_channel);
-        //display_obj.tftDrawExitScaleButtons();
-  
-        //CODE FOR PLOTTING CONTINUOUS LINES!!!!!!!!!!!!
-        //Plot "X" value
-        display_obj.tft.drawLine(x_pos - x_scale, y_pos_x_old, x_pos, y_pos_x, TFT_CYAN);
-  
-        //Draw preceding black 'boxes' to erase old plot lines, !!!WEIRD CODE TO COMPENSATE FOR BUTTONS AND COLOR KEY SO 'ERASER' DOESN'T ERASE BUTTONS AND COLOR KEY!!!
-        if ((x_pos <= 90) || ((x_pos >= 117) && (x_pos <= 320))) //above x axis
-          display_obj.tft.fillRect(x_pos+1, 28, 10, 93, TFT_BLACK); //compensate for buttons!
-        else
-          display_obj.tft.fillRect(x_pos+1, 0, 10, 121, TFT_BLACK); //don't compensate for buttons!
-
-        if (x_pos < 0) // below x axis
-          display_obj.tft.fillRect(x_pos+1, 121, 10, 88, TFT_CYAN);
-        else
-          display_obj.tft.fillRect(x_pos+1, 121, 10, 118, TFT_BLACK);
-  
-  
-        if ( (y_pos_x == 120) || (y_pos_y == 120) || (y_pos_z == 120) )
-        {
-          display_obj.tft.drawFastHLine(10, 120, 310, TFT_WHITE); // x axis
+        else if (t_y > bottom_third_start) {
+          // Lower third - decrease channel
+          if (set_channel > 1) {
+            set_channel--;
+            this->changeChannel(set_channel);
+            delay(100); // Small delay to prevent rapid channel changes
+          }
         }
-  
-        y_pos_x_old = y_pos_x; //set old y pos values to current y pos values 
-  
+        else {
+          // Center third - exit sniffer
+          this->StartScan(WIFI_SCAN_OFF);
+          this->orient_display = true;
+          return;
+        }
       }
-  
-      #ifdef HAS_SD
-        sd_obj.main();
-      #endif
-  
-    }
-  
-    display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK); //erase XY buttons and any lines behind them
-    display_obj.tft.fillRect(12, 0, 90, 32, TFT_BLACK); // key
-    display_obj.tftDrawChannelScaleButtons(set_channel);
-    display_obj.tftDrawExitScaleButtons();
-    display_obj.tftDrawEapolColorKey(this->filterActive());
-    display_obj.tftDrawGraphObjects(x_scale);
+    #endif
+    
+    #ifdef HAS_SD
+      sd_obj.main();
+    #endif
   }
+#endif
 
   void WiFiScan::packetMonitorMain(uint32_t currentTime)
   {
