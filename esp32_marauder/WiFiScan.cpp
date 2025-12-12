@@ -9065,7 +9065,6 @@ bool WiFiScan::filterActive() {
       sd_obj.main();
     #endif
   }
-#endif
 
   void WiFiScan::packetMonitorMain(uint32_t currentTime)
   {
