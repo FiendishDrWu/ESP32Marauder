@@ -4023,7 +4023,6 @@ void WiFiScan::RunEapolScan(uint8_t scan_mode, uint16_t color)
 #ifdef HAS_SCREEN
   display_obj.init();
   #ifdef HAS_ILI9341
-    display_obj.tft.setRotation(1);
     display_obj.tft.fillScreen(TFT_BLACK);
     #ifndef HAS_CYD_TOUCH
       display_obj.setCalData(true);
@@ -4043,7 +4042,7 @@ startPcap("eapol");
   display_obj.tft.setTextColor(TFT_WHITE, color);
   #ifdef HAS_FULL_SCREEN
     display_obj.tft.fillRect(0, 16, TFT_WIDTH, 16, color);
-    display_obj.tft.drawCentreString(text_table4[38], TFT_WIDTH / 2, 16, 2);
+    display_obj.tft.drawCentreString(text_table1[46], TFT_WIDTH / 2, 16, 2);
   #endif
 
   // NOTE: We intentionally do NOT call display_obj.touchToExit() here.
