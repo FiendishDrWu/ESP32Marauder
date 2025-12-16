@@ -4018,18 +4018,6 @@ void WiFiScan::RunEapolScan(uint8_t scan_mode, uint16_t color)
   
   num_eapol = 0;
 
-  // EAPOL sniffer should behave like other sniffers: terminal-style output (scrolling text),
-// no graph UI (graphing discards most useful data and is very inefficient).
-#ifdef HAS_SCREEN
-  display_obj.init();
-  #ifdef HAS_ILI9341
-    display_obj.tft.fillScreen(TFT_BLACK);
-    #ifndef HAS_CYD_TOUCH
-      display_obj.setCalData(true);
-    #endif
-  #endif
-#endif
-
 startPcap("eapol");
 
 #ifdef HAS_SCREEN

@@ -14,12 +14,13 @@ This guide explains how to build ESP32 Marauder firmware locally using Docker, w
 ## Quick Start
 
 1. **Make the build script executable** (Linux/Mac):
-   chmod +x build.sh
-   2. **Build for a specific board**:
+   `chmod +x build.sh`
+2. **Build for a specific board**:
    
-   ./build.sh v6
-      Or on Windows (PowerShell):wershell
-   bash build.sh v6
+   `./build.sh v6`
+   Or on Windows (PowerShell):
+   `bash build.sh v6`
+   
    ## Available Boards (All 20 Supported)
 
 - `flipper` - Flipper Zero WiFi Dev Board

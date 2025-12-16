@@ -422,42 +422,6 @@ void MenuFunctions::main(uint32_t currentTime)
         }
       }*/
 
-// Special touch controls for EAPOL/PMKID sniffers:
-//   upper third  -> channel up
-//   middle third -> exit sniffer
-//   lower third  -> channel down
-if (pressed &&
-    ((wifi_scan_obj.currentScanMode == WIFI_SCAN_EAPOL) ||
-     (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_EAPOL) ||
-     (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_LIST_EAPOL))) {
-
-  uint16_t third = TFT_HEIGHT / 3;
-
-  if (t_y < third) {
-    // Channel up
-    if (wifi_scan_obj.set_channel < 14)
-      wifi_scan_obj.changeChannel(wifi_scan_obj.set_channel + 1);
-    else
-      wifi_scan_obj.changeChannel(1);
-  }
-  else if (t_y > (third * 2)) {
-    // Channel down
-    if (wifi_scan_obj.set_channel > 1)
-      wifi_scan_obj.changeChannel(wifi_scan_obj.set_channel - 1);
-    else
-      wifi_scan_obj.changeChannel(14);
-  }
-  else {
-    // Exit
-    wifi_scan_obj.StartScan(WIFI_SCAN_OFF);
-    display_obj.init();
-    this->changeMenu(current_menu, true);
-  }
-
-  // Consume this touch so we don't also treat it as a menu button press
-  pressed = false;
-}
-
       // Detect up, down, select
       uint8_t menu_button = display_obj.menuButton(&t_x, &t_y, pressed);
 
@@ -490,7 +454,9 @@ if (pressed &&
             }
           }
           else if ((wifi_scan_obj.currentScanMode == WIFI_PACKET_MONITOR) ||
-                  (wifi_scan_obj.currentScanMode == WIFI_SCAN_EAPOL) ||
+                  ((wifi_scan_obj.currentScanMode == WIFI_SCAN_EAPOL) ||
+                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_EAPOL) ||
+                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_LIST_EAPOL)) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ANALYZER) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_PACKET_RATE) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_RAW_CAPTURE) ||
@@ -546,8 +512,10 @@ if (pressed &&
             }
           }
           else if ((wifi_scan_obj.currentScanMode == WIFI_PACKET_MONITOR) ||
-                  (wifi_scan_obj.currentScanMode == WIFI_SCAN_EAPOL) ||
-                  (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ANALYZER) ||
+                  ((wifi_scan_obj.currentScanMode == WIFI_SCAN_EAPOL) ||
+                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_EAPOL) ||
+                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_LIST_EAPOL)) ||
+				  (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ANALYZER) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_PACKET_RATE) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_RAW_CAPTURE) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_SIG_STREN)) {
@@ -570,6 +538,24 @@ if (pressed &&
           }
         }
         if(menu_button == SELECT_BUTTON) {
+          // In EAPOL/PMKID sniffers, middle third exits the sniffer
+          if ((wifi_scan_obj.currentScanMode == WIFI_SCAN_EAPOL) ||
+              (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_EAPOL) ||
+              (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_LIST_EAPOL)) {
+
+            wifi_scan_obj.StartScan(WIFI_SCAN_OFF);
+
+            // Force MenuFunctions::main() to restore normal orientation / touch mapping
+            display_obj.exit_draw = true;
+
+            // Return to the menu
+            this->changeMenu(current_menu, true);
+
+            x = -1;
+            y = -1;
+            return;
+          }
+
           current_menu->list->get(current_menu->selected).callable();
         }
         else {
@@ -658,7 +644,9 @@ if (pressed &&
                 }
               }
               else if ((wifi_scan_obj.currentScanMode == WIFI_PACKET_MONITOR) ||
-                      (wifi_scan_obj.currentScanMode == WIFI_SCAN_EAPOL) ||
+                      ((wifi_scan_obj.currentScanMode == WIFI_SCAN_EAPOL) ||
+                       (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_EAPOL) ||
+                       (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_LIST_EAPOL)) ||
                       (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ANALYZER) ||
                       (wifi_scan_obj.currentScanMode == WIFI_SCAN_PACKET_RATE) ||
                       (wifi_scan_obj.currentScanMode == WIFI_SCAN_RAW_CAPTURE) ||
@@ -722,7 +710,9 @@ if (pressed &&
           }
         }
         else if ((wifi_scan_obj.currentScanMode == WIFI_PACKET_MONITOR) ||
-                (wifi_scan_obj.currentScanMode == WIFI_SCAN_EAPOL) ||
+                ((wifi_scan_obj.currentScanMode == WIFI_SCAN_EAPOL) ||
+                 (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_EAPOL) ||
+                 (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_LIST_EAPOL)) ||
                 (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ANALYZER) ||
                 (wifi_scan_obj.currentScanMode == WIFI_SCAN_PACKET_RATE) ||
                 (wifi_scan_obj.currentScanMode == WIFI_SCAN_RAW_CAPTURE) ||
@@ -1635,6 +1625,8 @@ void MenuFunctions::RunSetup()
   });
   #ifdef HAS_ILI9341
     this->addNodes(&wifiSnifferMenu, text_table1[46], TFTVIOLET, NULL, EAPOL, [this]() {
+      display_obj.clearScreen();
+      this->drawStatusBar();		
       wifi_scan_obj.StartScan(WIFI_SCAN_EAPOL, TFT_VIOLET);
     });
     this->addNodes(&wifiSnifferMenu, text_table1[45], TFTBLUE, NULL, PACKET_MONITOR, [this]() {
